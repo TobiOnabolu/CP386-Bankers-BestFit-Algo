@@ -15,6 +15,8 @@ bool isless(int *need, int *work);
 int* subtract_rows(int *work, int *allocation);
 void print_thread(int arr[][4], int i);
 char* get_input();
+char** split_word(char *input, int length);
+int get_arg_count(char *input);
 
 //hardcoded matrices
 int max_needs[5][4] = { { 6, 4, 7, 3 }, { 4, 2, 3, 2 }, { 2, 5, 3, 3 }, { 6, 3,
@@ -38,6 +40,99 @@ int main(int argc, char *argv[]) {
 	begin();
 
 	return 0;
+}
+
+//Function to start the program
+void begin() {
+	bool running = true;
+
+	//keep running until exit command is typed
+	while (running) {
+		//collect input
+		printf("\nEnter Command: ");
+		char *input = get_input();
+
+		//get length of input
+		char *c_input = strdup(input);
+		int length = get_arg_count(c_input);
+
+		//split the input into an array
+		char **values = split_word(input, length);
+
+		//Process which command should be run
+
+		if (strcmp(values[0], "status") == 0) {
+			print_status();
+		}
+
+		else if (strcmp(values[0], "exit") == 0) {
+			printf("Exiting Program...\n");
+			running = false;
+		}
+
+		else if (strcmp(values[0], "run") == 0) {
+			printf("Executing run command");
+
+			//get safe sequence
+
+			//pass safe sequence to thread handler
+
+			//thread handler will execute 5 thread and pass the safe sequence position number to thread id
+
+		} else if (strcmp(values[0], "rq") == 0) {
+			if (length == resources + 2) {	//correct number of arguments for rq
+				printf("Executing request command");
+			} else {
+				printf("Incorrect number of arguments for Request command");
+			}
+
+		} else if (strcmp(values[0], "rl") == 0) {
+			if (length == resources + 2) {	//correct number of arguments for rl
+				printf("Executing release command");
+			} else {
+				printf("Incorrect number of arguments for Release command");
+			}
+
+		} else {
+			printf("Invalid input, use one of RQ, RL, Status, Run, Exit");
+		}
+	}
+}
+
+//split the input into a character array
+char** split_word(char *input, int length) {
+	//make copy of input cause tokenizer will ruin input string
+	char *c_input = strdup(input);
+	char *token;
+	char **vals = malloc(sizeof(char*) * length);
+
+	token = strtok(c_input, " ");
+	int i = 0;
+
+	//copying each arg into vals array
+	while (token != NULL) {
+		vals[i] = malloc(sizeof(token) * sizeof(char));
+		strcpy(vals[i], token);
+		i++;
+		token = strtok(NULL, " ");
+	}
+
+	return vals;
+
+}
+
+//get the number of args in the input
+int get_arg_count(char *input) {
+	int count = 0;
+	char *token;
+	token = strtok(input, " ");
+	while (token != NULL) {
+		count++;
+		token = strtok(NULL, " ");
+	}
+
+	return count;
+
 }
 
 //helper to check if 1 row is less than the other
@@ -69,20 +164,6 @@ int* add_rows(int *work, int *allocation) {
 	}
 
 	return work;
-}
-
-//Function to handle the input from user
-void begin() {
-	bool running = true;
-
-	//keep running until exit command is typed
-	while (running) {
-		printf("Enter Command: ");
-		char *input = get_input();
-		printf("Your word is: %s", input);
-		running = false;
-
-	}
 }
 
 //function to parse input from user
