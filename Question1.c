@@ -11,12 +11,16 @@
 void begin();
 void print_status();
 int* add_rows(int *work, int *allocation);
-bool isless(int *need, int *work);
+bool isless(int *work, int *need);
 int* subtract_rows(int *work, int *allocation);
 void print_thread(int arr[][4], int i);
 char* get_input();
 char** split_word(char *input, int length);
 int get_arg_count(char *input);
+int* safe_sequence();
+int** create_copy(int arr[][4]);
+bool is_safe(int *finish);
+void request(int p, int *request);
 
 //hardcoded matrices
 int max_needs[5][4] = { { 6, 4, 7, 3 }, { 4, 2, 3, 2 }, { 2, 5, 3, 3 }, { 6, 3,
@@ -36,6 +40,15 @@ int main(int argc, char *argv[]) {
 		printf("Not enough arguments, closing");
 		return 1;
 	}
+
+	int *finish = safe_sequence();
+
+	for (int i = 0; i < threads; i++) {
+		printf("%d ", finish[i]);
+
+	}
+
+	printf("\n");
 
 	begin();
 
@@ -99,6 +112,74 @@ void begin() {
 	}
 }
 
+void request(int p, int *request) {
+	//thread p request the request array of size resources
+
+}
+
+bool is_safe(int *finish) {
+	for (int i = 0; i < threads; i++) {
+		if (finish[i] == -1) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+//checks if we are currently in a safe state and returns the safe sequence
+int* safe_sequence() {
+
+	//create copies of allocated and need (will be used in rq command)
+	//int **allocated_copy = create_copy(allocated);
+	//int **needs_copy = create_copy(needs);
+
+	//finish array to hold safe sequence
+	int *finish = malloc(sizeof(int) * threads);
+	int *work = malloc(sizeof(int) * resources);
+
+	for (int i = 0; i < threads; i++) {
+		finish[i] = -1; //singnifies thread i not in safe seq yet
+	}
+
+	//copy currently available to work done
+	for (int i = 0; i < resources; i++) {
+		work[i] = available[i];
+	}
+
+	//bankers algo
+	int finish_order = 1; //keep track of safe seq order
+	for (int k = 0; k < threads; k++) { //run this loop to keep checking if we can now add a thread after a possible increase in work
+		for (int i = 0; i < threads; i++) {
+			for (int j = 0; j < resources; j++) {
+				if (finish[i] == -1 && isless(needs[i], work)) { //this process has not been added to safe seq and its need <= work
+					finish[i] = finish_order;
+					finish_order++;
+					work = add_rows(work, allocated[i]);
+				}
+			}
+		}
+	}
+
+	//return safe sequence
+	return finish;
+}
+
+int** create_copy(int arr[][4]) {
+	int **copy = (int**) malloc(sizeof(int*) * threads);
+	for (int i = 0; i < threads; i++) {
+		copy[i] = (int*) malloc(sizeof(int) * resources);
+	}
+
+	for (int i = 0; i < threads; i++) {
+		for (int j = 0; j < resources; j++) {
+			copy[i][j] = arr[i][j];
+		}
+	}
+
+	return copy;
+}
+
 //split the input into a character array
 char** split_word(char *input, int length) {
 	//make copy of input cause tokenizer will ruin input string
@@ -136,7 +217,7 @@ int get_arg_count(char *input) {
 }
 
 //helper to check if 1 row is less than the other
-bool isless(int *work, int *need) {
+bool isless(int *need, int *work) {
 	bool less = true;
 	for (int i = 0; i < resources; i++) {
 		if (need[i] > work[i]) {
