@@ -18,9 +18,9 @@ char* get_input();
 char** split_word(char *input, int length);
 int get_arg_count(char *input);
 int* safe_sequence();
-int** create_copy(int arr[][4]);
+int* create_copy(int *arr);
 bool is_safe(int *finish);
-void request(int p, int *request);
+bool request_granted(int p, int *request);
 
 //hardcoded matrices
 int max_needs[5][4] = { { 6, 4, 7, 3 }, { 4, 2, 3, 2 }, { 2, 5, 3, 3 }, { 6, 3,
@@ -40,6 +40,10 @@ int main(int argc, char *argv[]) {
 		printf("Not enough arguments, closing");
 		return 1;
 	}
+
+	int request[4] = { 1, 0, 0, 1 };
+
+	request_granted(0, request);
 
 	int *finish = safe_sequence();
 
@@ -112,8 +116,52 @@ void begin() {
 	}
 }
 
-void request(int p, int *request) {
+bool request_granted(int p, int *request) {
 	//thread p request the request array of size resources
+	//we will either grant request or wont
+
+	//if granted = false and we ran safe seq, we assign allocated prve and needs prev back to our original arrays
+	int *allocated_prev = create_copy(allocated[p]);
+	int *needs_prev = create_copy(needs[p]);
+	int *avail_prev = create_copy(available);
+
+	if (isless(request, needs[p]) == false) { //request is > needs for this process
+		return false;
+	}
+
+	if (isless(request, available) == false) { //request is greater than what we currently have available
+		return false;
+	}
+
+	//subtract the resources used from availble
+	subtract_rows(available, request);
+
+	//add the resources request to allocated
+	add_rows(allocated[p], request);
+
+	printf(
+			"\n if these value below aint 0, then the add rows and sub row function worked\n");
+	for (int i = 0; i < resources; i++) {
+		printf("%d ", allocated[p][i]);
+	}
+	printf("\n");
+
+	//subtract needs now that we allocated some resources
+	subtract_rows(needs[p], request);
+
+	//retreive safe seq
+	int *finish = safe_sequence();
+
+	if (is_safe(finish) == false) { //the sequence wasnt safe revert back to prev needs and allocated array
+		for (int j = 0; j < resources; j++) {
+			allocated[p][j] = allocated_prev[j];
+			needs[p][j] = needs_prev[j];
+			available[j] = avail_prev[j];
+		}
+		return false;
+	}
+
+	return true;
 
 }
 
@@ -136,16 +184,13 @@ int* safe_sequence() {
 
 	//finish array to hold safe sequence
 	int *finish = malloc(sizeof(int) * threads);
-	int *work = malloc(sizeof(int) * resources);
 
 	for (int i = 0; i < threads; i++) {
 		finish[i] = -1; //singnifies thread i not in safe seq yet
 	}
 
 	//copy currently available to work done
-	for (int i = 0; i < resources; i++) {
-		work[i] = available[i];
-	}
+	int *work = create_copy(available);
 
 	//bankers algo
 	int finish_order = 1; //keep track of safe seq order
@@ -165,16 +210,11 @@ int* safe_sequence() {
 	return finish;
 }
 
-int** create_copy(int arr[][4]) {
-	int **copy = (int**) malloc(sizeof(int*) * threads);
-	for (int i = 0; i < threads; i++) {
-		copy[i] = (int*) malloc(sizeof(int) * resources);
-	}
+int* create_copy(int *arr) {
+	int *copy = malloc(sizeof(int) * resources);
 
-	for (int i = 0; i < threads; i++) {
-		for (int j = 0; j < resources; j++) {
-			copy[i][j] = arr[i][j];
-		}
+	for (int i = 0; i < resources; i++) {
+		copy[i] = arr[i];
 	}
 
 	return copy;
