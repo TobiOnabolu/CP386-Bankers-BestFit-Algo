@@ -33,7 +33,7 @@ int allocated[5][4] = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0,
 		0, 0 }, { 0, 0, 0, 0 } };
 int needs[5][4] = { { 6, 4, 7, 3 }, { 4, 2, 3, 2 }, { 2, 5, 3, 3 },
 		{ 6, 3, 3, 2 }, { 5, 5, 7, 5 } };
-int available[4] = { 10, 5, 7, 8 };
+int available[4] = { 0, 0, 0, 0 };
 int threads = 5;
 int resources = 4;
 
@@ -44,19 +44,22 @@ int main(int argc, char *argv[]) {
 		printf("Not enough arguments, closing");
 		return 1;
 	}
+	for (int i = 0; i < resources; i++) {
+		available[i] = atoi(argv[i + 1]);
+	}
 
-	//int request[4] = { 1, 0, 0, 1 };
+	printf("Number of Customers: %d\n", threads);
 
-	//request_granted(0, request);
+	printf("Currently Available resources: ");
+	for (int i = 0; i < resources; i++) {
+		printf("%d ", available[i]);
+	}
+	printf("\n");
 
-	//int *finish = safe_sequence();
-
-	//for (int i = 0; i < threads; i++) {
-	//printf("%d ", finish[i]);
-
-	//}
-
-	//printf("\n");
+	printf("Maximum Resources from file:\n");
+	for (int i = 0; i < threads; i++) {
+		print_thread(max_needs, i);
+	}
 
 	begin();
 
@@ -70,7 +73,7 @@ void begin() {
 	//keep running until exit command is typed
 	while (running) {
 		//collect input
-		printf("\nEnter Command: ");
+		printf("Enter Command: ");
 		char *input = get_input();
 
 		//get length of input
@@ -120,11 +123,11 @@ void begin() {
 					printf("State is safe, and request is satisfied\n");
 				} else {
 					printf(
-							"Request denied. Request will put system in unsafe state.");
+							"Request denied. Request will put system in unsafe state.\n");
 				}
 
 			} else {
-				printf("Incorrect number of arguments for Request command");
+				printf("Incorrect number of arguments for Request command\n");
 			}
 
 		} else if (strcmp(values[0], "rl") == 0) {
@@ -142,15 +145,15 @@ void begin() {
 					printf("State is safe, and request is satisfied\n");
 				} else {
 					printf(
-							"Request denied. Process does not have that many resources to release.");
+							"Request denied. Process does not have that many resources to release.\n");
 				}
 
 			} else {
-				printf("Incorrect number of arguments for Release command");
+				printf("Incorrect number of arguments for Release command\n");
 			}
 
 		} else {
-			printf("Invalid input, use one of RQ, RL, Status, Run, Exit");
+			printf("Invalid input, use one of RQ, RL, Status, Run, Exit\n");
 		}
 	}
 }
@@ -167,18 +170,18 @@ void handle_threads(int *finish) {
 	for (int i = 0; i < threads; i++) {
 		pthread_t tid;
 		int id = finish[i];
-		printf("Customer/Thread: %d\n", id);
-		printf("Allocated Resources: ");
+		printf("--> Customer/Thread: %d\n", id);
+		printf("    Allocated Resources: ");
 		for (int j = 0; j < resources; j++) {
 			printf("%d ", allocated[id][j]);
 		}
 		printf("\n");
-		printf("Needed: ");
+		printf("    Needed: ");
 		for (int j = 0; j < resources; j++) {
 			printf("%d ", needs[id][j]);
 		}
 		printf("\n");
-		printf("Available: ");
+		printf("    Available: ");
 		for (int j = 0; j < resources; j++) {
 			printf("%d ", available[j]);
 		}
@@ -191,7 +194,7 @@ void handle_threads(int *finish) {
 void* runner(void *thread_id) {
 	int tid = *((int*) thread_id);
 
-	printf("Thread has started\n");
+	printf("    Thread has started\n");
 	//add allocated to available
 	add_rows(available, allocated[tid]);
 
@@ -201,11 +204,11 @@ void* runner(void *thread_id) {
 	//set allocated to 0
 	subtract_rows(allocated[tid], allocated[tid]);
 
-	printf("Thread has finished\n");
+	printf("    Thread has finished\n");
 
-	printf("Thread has releasing resources\n");
+	printf("    Thread is releasing resources\n");
 
-	printf("New Available: ");
+	printf("    New Available: ");
 
 	for (int i = 0; i < resources; i++) {
 		printf("%d ", available[i]);
@@ -296,10 +299,6 @@ bool is_safe(int *finish) {
 
 //checks if we are currently in a safe state and returns the safe sequence
 int* safe_sequence() {
-
-	//create copies of allocated and need (will be used in rq command)
-	//int **allocated_copy = create_copy(allocated);
-	//int **needs_copy = create_copy(needs);
 
 	//finish array to hold safe sequence
 	int *finish = malloc(sizeof(int) * threads);
