@@ -142,7 +142,7 @@ void begin() {
 				//attempt to grant request
 				bool granted = release_granted(thread, request);
 				if (granted == true) {
-					printf("State is safe, and request is satisfied\n");
+					printf("The resources have been released successfully\n");
 				} else {
 					printf(
 							"Request denied. Process does not have that many resources to release.\n");
