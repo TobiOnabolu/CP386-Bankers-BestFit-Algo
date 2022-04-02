@@ -7,6 +7,7 @@
 #include <time.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <pthread.h>
 
 void begin();
 void print_status();
@@ -21,6 +22,9 @@ int* safe_sequence();
 int* create_copy(int *arr);
 bool is_safe(int *finish);
 bool request_granted(int p, int *request);
+bool release_granted(int p, int *request);
+void handle_threads(int *finish);
+void* runner(void *thread_id);
 
 //hardcoded matrices
 int max_needs[5][4] = { { 6, 4, 7, 3 }, { 4, 2, 3, 2 }, { 2, 5, 3, 3 }, { 6, 3,
@@ -41,18 +45,18 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	int request[4] = { 1, 0, 0, 1 };
+	//int request[4] = { 1, 0, 0, 1 };
 
-	request_granted(0, request);
+	//request_granted(0, request);
 
-	int *finish = safe_sequence();
+	//int *finish = safe_sequence();
 
-	for (int i = 0; i < threads; i++) {
-		printf("%d ", finish[i]);
+	//for (int i = 0; i < threads; i++) {
+	//printf("%d ", finish[i]);
 
-	}
+	//}
 
-	printf("\n");
+	//printf("\n");
 
 	begin();
 
@@ -88,24 +92,59 @@ void begin() {
 		}
 
 		else if (strcmp(values[0], "run") == 0) {
-			printf("Executing run command");
 
 			//get safe sequence
-
-			//pass safe sequence to thread handler
+			int *finish = safe_sequence();
+			if (is_safe(finish)) {
+				//pass safe sequence to thread handler
+				handle_threads(finish);
+			} else {
+				printf(
+						"Tried to run but you are in unsafe state. You should never be in unsafe state, Something went wrong\n");
+			}
 
 			//thread handler will execute 5 thread and pass the safe sequence position number to thread id
 
 		} else if (strcmp(values[0], "rq") == 0) {
 			if (length == resources + 2) {	//correct number of arguments for rq
-				printf("Executing request command");
+			//get process # and its request
+				int thread = atoi(values[1]);
+				int *request = malloc(sizeof(int) * resources);
+				for (int i = 0; i < resources; i++) {
+					request[i] = atoi(values[i + 2]);
+				}
+
+				//attempt to grant request
+				bool granted = request_granted(thread, request);
+				if (granted == true) {
+					printf("State is safe, and request is satisfied\n");
+				} else {
+					printf(
+							"Request denied. Request will put system in unsafe state.");
+				}
+
 			} else {
 				printf("Incorrect number of arguments for Request command");
 			}
 
 		} else if (strcmp(values[0], "rl") == 0) {
 			if (length == resources + 2) {	//correct number of arguments for rl
-				printf("Executing release command");
+			//get process # and its request
+				int thread = atoi(values[1]);
+				int *request = malloc(sizeof(int) * resources);
+				for (int i = 0; i < resources; i++) {
+					request[i] = atoi(values[i + 2]);
+				}
+
+				//attempt to grant request
+				bool granted = release_granted(thread, request);
+				if (granted == true) {
+					printf("State is safe, and request is satisfied\n");
+				} else {
+					printf(
+							"Request denied. Process does not have that many resources to release.");
+				}
+
 			} else {
 				printf("Incorrect number of arguments for Release command");
 			}
@@ -114,6 +153,93 @@ void begin() {
 			printf("Invalid input, use one of RQ, RL, Status, Run, Exit");
 		}
 	}
+}
+
+void handle_threads(int *finish) {
+	printf("Safe sequence is: ");
+
+	for (int i = 0; i < threads; i++) {
+		printf("%d ", finish[i]);
+	}
+	printf("\n");
+
+	//create the threads and run them
+	for (int i = 0; i < threads; i++) {
+		pthread_t tid;
+		int id = finish[i];
+		printf("Customer/Thread: %d\n", id);
+		printf("Allocated Resources: ");
+		for (int j = 0; j < resources; j++) {
+			printf("%d ", allocated[id][j]);
+		}
+		printf("\n");
+		printf("Needed: ");
+		for (int j = 0; j < resources; j++) {
+			printf("%d ", needs[id][j]);
+		}
+		printf("\n");
+		printf("Available: ");
+		for (int j = 0; j < resources; j++) {
+			printf("%d ", available[j]);
+		}
+		printf("\n");
+		pthread_create(&tid, NULL, runner, (void*) &id);
+		pthread_join(tid, NULL);
+	}
+}
+
+void* runner(void *thread_id) {
+	int tid = *((int*) thread_id);
+
+	printf("Thread has started\n");
+	//add allocated to available
+	add_rows(available, allocated[tid]);
+
+	//set need back to max need
+	add_rows(needs[tid], allocated[tid]);
+
+	//set allocated to 0
+	subtract_rows(allocated[tid], allocated[tid]);
+
+	printf("Thread has finished\n");
+
+	printf("Thread has releasing resources\n");
+
+	printf("New Available: ");
+
+	for (int i = 0; i < resources; i++) {
+		printf("%d ", available[i]);
+	}
+
+	printf("\n");
+	return NULL;
+}
+
+bool release_granted(int p, int *request) {
+	//thread p request the request array of size resources
+	//we will either grant request or wont
+
+	if (isless(request, max_needs[p]) == false) { //request is > max this process can hold
+		return false;
+	}
+
+	if (isless(request, allocated[p]) == false) { //request is > allocated for this process
+		return false;
+	}
+
+	//subtract the resources used from allocated
+	subtract_rows(allocated[p], request);
+
+	//add the resources released back into available
+	add_rows(available, request);
+
+	//subtract needs now that we allocated some resources
+	for (int j = 0; j < resources; j++) {
+		needs[p][j] = max_needs[p][j] - allocated[p][j];
+	}
+
+	return true;
+
 }
 
 bool request_granted(int p, int *request) {
@@ -138,13 +264,6 @@ bool request_granted(int p, int *request) {
 
 	//add the resources request to allocated
 	add_rows(allocated[p], request);
-
-	printf(
-			"\n if these value below aint 0, then the add rows and sub row function worked\n");
-	for (int i = 0; i < resources; i++) {
-		printf("%d ", allocated[p][i]);
-	}
-	printf("\n");
 
 	//subtract needs now that we allocated some resources
 	subtract_rows(needs[p], request);
@@ -184,21 +303,24 @@ int* safe_sequence() {
 
 	//finish array to hold safe sequence
 	int *finish = malloc(sizeof(int) * threads);
+	int *seq = malloc(sizeof(int) * threads);
 
 	for (int i = 0; i < threads; i++) {
 		finish[i] = -1; //singnifies thread i not in safe seq yet
+		seq[i] = -1;
 	}
 
 	//copy currently available to work done
 	int *work = create_copy(available);
 
 	//bankers algo
-	int finish_order = 1; //keep track of safe seq order
+	int finish_order = 0; //keep track of safe seq order
 	for (int k = 0; k < threads; k++) { //run this loop to keep checking if we can now add a thread after a possible increase in work
 		for (int i = 0; i < threads; i++) {
 			for (int j = 0; j < resources; j++) {
 				if (finish[i] == -1 && isless(needs[i], work)) { //this process has not been added to safe seq and its need <= work
 					finish[i] = finish_order;
+					seq[finish_order] = i;
 					finish_order++;
 					work = add_rows(work, allocated[i]);
 				}
@@ -207,7 +329,7 @@ int* safe_sequence() {
 	}
 
 	//return safe sequence
-	return finish;
+	return seq;
 }
 
 int* create_copy(int *arr) {
