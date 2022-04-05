@@ -3,15 +3,28 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define OPERATOR_LENGTH 8
-#define PROCESS 128
-
+//doubly linked list struct
 typedef struct mBlock {
     size_t low, high;
     char *name;
     struct mBlock *prev, *next;
 } mBlock;
 
+mBlock *make_memory_block(size_t low, size_t high, const char *name, mBlock *prev, mBlock *next);
+int request_memory(const char *name, size_t size, char algorithm);
+int release_memory(const char *name);
+void print_status();
+void request_aux();
+void release_aux();
+int init(int argc, char **argv);
+int main(int argc, char **argv);
+
+//global constants
+#define OPERATOR_LENGTH 8
+#define PROCESS 128
+
+
+//global variables
 size_t memory_size = 0;
 mBlock *memory;
 
@@ -19,12 +32,11 @@ mBlock *memory;
 mBlock *make_memory_block(size_t low, size_t high, const char *name, mBlock *prev, mBlock *next) {
     mBlock *mems = malloc(sizeof(mBlock));
     if(mems == NULL) {
-        printf("Failed to allocate phisical memory.\n");
+        //printf("allocation failed.\n");
         exit(-1);
     }
     mems->low = low, mems->high = high;
-    // allocate memory and copy the string
-    if(strlen(name) != 0) {
+    if(strlen(name) != 0) { // allocate the mem!
     	mems->name = malloc(sizeof(char) * (strlen(name) + 1));
         strcpy(mems->name, name);
     } else {
@@ -55,7 +67,7 @@ int request_memory(const char *name, size_t size, char algorithm) {
         	where = where->next;
         }
     } else {
-    	printf("Select B\n");
+    	//printf("Select B\n");
     	return -1;
         }
     if(!hole || hole->name != NULL) {
@@ -72,8 +84,7 @@ int request_memory(const char *name, size_t size, char algorithm) {
     return 0;
 }
 
-// release all blocks with the given name, and do the merges if possible
-int release_memory(const char *name) {
+int release_memory(const char *name) { //release for certain processes
     mBlock *where = memory;
     int flag = 1;
     while(where) {
@@ -82,8 +93,8 @@ int release_memory(const char *name) {
             where->name = NULL;    // mark it unused
             flag = 0;
         }
-        // merge with the prev block if possible
-        if(where->name == NULL && where->prev && where->prev->name == NULL) {
+
+        if(where->name == NULL && where->prev && where->prev->name == NULL) { //merge if possible to keep things simple
             mBlock *temp = where->prev;
             where->prev = temp->prev;
             if(temp->prev) {
@@ -92,36 +103,33 @@ int release_memory(const char *name) {
             where->low = temp->low;
             free(temp);
         }
-        // update the first block in memory if necessary
-        if(where->prev == NULL) {
+
+        if(where->prev == NULL) { //update first block
         	memory = where;
         }
         where = where->next;
     }
-    if(flag) {
-        printf("No memory gets released!\n");
-    }
     return flag;
 }
 
-void request_wrapper() {
+void request_aux() {
     char name[PROCESS], strategy;
     size_t size;
     scanf("%s %zu %c", name, &size, &strategy);
 
     if (request_memory(name, size, strategy)) {
-    	printf("Failure to allocate\n");
+    	printf("Fail to allocate\n");
     } else {
     	printf("Successfully allocated %zu to process %s\n", size, name);
     }
 }
 
-void release_wrapper() {
+void release_aux() {
     char name[PROCESS];
     scanf("%s", name);
 
     if(release_memory(name)) {
-    	printf("Failure to release\n");
+    	printf("Fail to release\n");
     } else {
     	printf("Releasing memory for process %s\n", name);
     }
@@ -148,7 +156,7 @@ void print_status() {
 
 int init(int argc, char **argv) {
     if(argc != 2) {
-        printf("Incorrect number of arguments.\n");
+        printf("Please put args in correctly\n");
         return -1;
     }
     sscanf(argv[1], "%zu", &memory_size);
@@ -167,9 +175,9 @@ int main(int argc, char **argv) {
         printf("allocator> ");
         scanf("%s", op);
         if(strcmp(op, "RQ") == 0) {
-            request_wrapper();
+            request_aux();
         } else if(strcmp(op, "RL") == 0) {
-            release_wrapper();
+            release_aux();
         } else if(strcmp(op, "Status") == 0) {
             print_status();
         } else if (strcmp(op, "Exit") == 0) {
